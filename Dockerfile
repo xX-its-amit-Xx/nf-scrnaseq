@@ -36,11 +36,28 @@ RUN micromamba install -y -n base -f /tmp/env.yml \
 ENV PATH=/opt/conda/bin:$PATH
 ENV MPLBACKEND=Agg
 ENV PYTHONDONTWRITEBYTECODE=1
+# Nextflow runs each process as the host user (-u $(id -u):$(id -g)), which
+# isn't the image's mambauser and so can't write into /opt/conda. Point
+# every cache numba / matplotlib / xdg expect at a tmp dir that's always
+# world-writable.
+ENV NUMBA_CACHE_DIR=/tmp/numba-cache
+ENV MPLCONFIGDIR=/tmp/mpl-cache
+ENV XDG_CACHE_HOME=/tmp/xdg-cache
+ENV HOME=/tmp
 
-# Sanity check: every binary the pipeline calls must exist on $PATH
-RUN fastqc --version \
-    && kb --version \
-    && multiqc --version \
-    && python -c "import scanpy, scrublet, anndata, leidenalg, umap; print('ok')"
+USER root
+RUN mkdir -p /tmp/numba-cache /tmp/mpl-cache /tmp/xdg-cache \
+    && chmod 1777 /tmp/numba-cache /tmp/mpl-cache /tmp/xdg-cache
+USER $MAMBA_USER
+
+# Sanity check: every binary the pipeline calls must exist on $PATH.
+# Use `command -v` instead of `--version` because some tools (kb, kallisto)
+# exit non-zero from their info banners and would break a build chain.
+RUN command -v fastqc \
+    && command -v kb \
+    && command -v kallisto \
+    && command -v bustools \
+    && command -v multiqc \
+    && python -c "import scanpy, scrublet, anndata, leidenalg, umap; print('imports ok')"
 
 WORKDIR /work

@@ -43,12 +43,12 @@ def helpMessage() {
     """.stripIndent()
 }
 
-if (params.help) {
-    helpMessage()
-    exit 0
-}
-
 workflow {
+
+    if (params.help) {
+        helpMessage()
+        return
+    }
 
     if (!params.samplesheet) {
         error "Missing --samplesheet. See `nextflow run . --help`."
@@ -117,20 +117,15 @@ workflow {
 
     // ----------------------------------------------------------
     //  Stage 6: MultiQC aggregate report
+    //
+    //  Only FastQC outputs go in for now. MultiQC doesn't parse kb-python's
+    //  run_info.json natively, and the per-sample basename collisions it
+    //  causes aren't worth a custom multiqc module config to resolve.
     // ----------------------------------------------------------
-    ch_multiqc = FASTQC.out.zip.map { meta, z -> z }
-        .mix( ALIGN_COUNT.out.logs.map { meta, l -> l } )
+    ch_multiqc = FASTQC.out.zip
+        .map { meta, z -> z }
         .collect()
 
     MULTIQC( ch_multiqc )
 }
 
-workflow.onComplete {
-    log.info """
-    -----------------------------------------------------------
-     Pipeline completed: ${workflow.success ? 'SUCCESS' : 'FAILED'}
-     Duration  : ${workflow.duration}
-     Results   : ${params.outdir}
-    -----------------------------------------------------------
-    """.stripIndent()
-}

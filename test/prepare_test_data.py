@@ -184,6 +184,11 @@ def main() -> int:
         build_kallisto_index(cdna_fa, idx)
         print(f"  ref:  {idx.name}")
 
+    # Write paths relative to the project root so the samplesheet works
+    # whether you invoke the script from the host or from inside the
+    # container (where the resolved absolute path would be /work/...).
+    project_root = args.out_dir.parent
+
     samples = []
     for sid, tissue in [("sampleA", "pbmc"), ("sampleB", "lung")]:
         r1 = args.out_dir / "fastqs" / f"{sid}_R1.fastq.gz"
@@ -192,8 +197,12 @@ def main() -> int:
             sid, transcripts, args.n_cells, args.reads_per_cell,
             r1, r2, rng,
         )
-        samples.append({"id": sid, "tissue": tissue,
-                        "r1": str(r1.resolve()), "r2": str(r2.resolve())})
+        samples.append({
+            "id": sid,
+            "tissue": tissue,
+            "r1": r1.resolve().relative_to(project_root.resolve()).as_posix(),
+            "r2": r2.resolve().relative_to(project_root.resolve()).as_posix(),
+        })
         print(f"  fastq: {r1.name}, {r2.name}")
 
     samplesheet = args.out_dir / "samplesheet.csv"

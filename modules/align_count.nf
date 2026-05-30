@@ -25,11 +25,6 @@ process ALIGN_COUNT {
         -t ${task.cpus} \\
         --overwrite \\
         ${r1} ${r2}
-
-    # Surface logs at predictable paths for downstream channels
-    if [ -f ${meta.id}/run_info.json ]; then
-        cp ${meta.id}/run_info.json ${meta.id}/run_info.json
-    fi
     """
 
     stub:

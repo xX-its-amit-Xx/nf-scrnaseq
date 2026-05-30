@@ -117,15 +117,20 @@ def main() -> int:
         adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
     )
 
-    # Pre-filter diagnostic plots
-    sc.pl.violin(
-        adata,
-        ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
-        jitter=0.4,
-        multi_panel=True,
-        show=False,
-        save=f"_{args.sample_id}_prefilter.png",
-    )
+    # Pre-filter diagnostic plots — tolerated to fail on tiny / degenerate
+    # data (seaborn 0.13+ catplot can throw IndexError when a group has 0
+    # rows). The QC json and h5ad are the load-bearing outputs.
+    try:
+        sc.pl.violin(
+            adata,
+            ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
+            jitter=0.4,
+            multi_panel=True,
+            show=False,
+            save=f"_{args.sample_id}_prefilter.png",
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[scanpy_qc] pre-filter violin failed ({e}); skipping", file=sys.stderr)
 
     adata = run_scrublet(adata, args.doublet_thresh)
 
@@ -135,16 +140,19 @@ def main() -> int:
     adata = adata[adata.obs["pct_counts_mt"] <= args.max_mito_pct].copy()
     adata = adata[adata.obs["doublet_score"] <= args.doublet_thresh].copy()
 
-    # Post-filter diagnostic plot
+    # Post-filter diagnostic plot — same tolerance as the pre-filter one.
     if adata.n_obs > 0:
-        sc.pl.violin(
-            adata,
-            ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
-            jitter=0.4,
-            multi_panel=True,
-            show=False,
-            save=f"_{args.sample_id}_postfilter.png",
-        )
+        try:
+            sc.pl.violin(
+                adata,
+                ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
+                jitter=0.4,
+                multi_panel=True,
+                show=False,
+                save=f"_{args.sample_id}_postfilter.png",
+            )
+        except Exception as e:  # noqa: BLE001
+            print(f"[scanpy_qc] post-filter violin failed ({e}); skipping", file=sys.stderr)
 
     metrics = {
         "sample_id": args.sample_id,

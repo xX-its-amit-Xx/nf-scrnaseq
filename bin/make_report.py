@@ -60,11 +60,19 @@ def render_filters_table(filters: dict) -> str:
 
 
 def umap_panel(adata: ad.AnnData, color: str, title: str) -> str:
-    if color not in adata.obs.columns:
+    # Skip silently when this AnnData never got embedded — e.g. a sample
+    # that fell below the cell-count cutoff in NORMALIZE_CLUSTER.
+    if "X_umap" not in adata.obsm or color not in adata.obs.columns:
         return ""
-    fig = sc.pl.umap(
-        adata, color=color, return_fig=True, show=False, title=title
-    )
+    try:
+        fig = sc.pl.umap(
+            adata, color=color, return_fig=True, show=False, title=title
+        )
+    except Exception as e:  # noqa: BLE001
+        return (
+            f'<div class="panel"><h3>{title}</h3>'
+            f'<p><em>plot failed: {e}</em></p></div>'
+        )
     return (
         f'<div class="panel"><h3>{title}</h3>'
         f'<img src="data:image/png;base64,{fig_to_b64(fig)}"/></div>'
@@ -82,7 +90,16 @@ def qc_violin(adata: ad.AnnData) -> str:
     if len(cols) == 1:
         axes = [axes]
     for ax, col in zip(axes, cols):
-        ax.violinplot(adata.obs[col].dropna(), showmedians=True)
+        # matplotlib.violinplot blows up on empty arrays — fall back to a
+        # text label so the rest of the report still renders.
+        values = adata.obs[col].dropna().to_numpy()
+        if values.size == 0:
+            ax.text(0.5, 0.5, "no data", ha="center", va="center")
+        else:
+            try:
+                ax.violinplot(values, showmedians=True)
+            except (ValueError, np.linalg.LinAlgError) as e:
+                ax.text(0.5, 0.5, f"plot failed:\n{e}", ha="center", va="center", fontsize=8)
         ax.set_title(col)
         ax.set_xticks([])
     fig.tight_layout()
