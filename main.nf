@@ -56,14 +56,26 @@ workflow {
 
     // ----------------------------------------------------------
     //  Parse samplesheet -> per-sample channel of [meta, R1, R2]
+    //  Fails loudly on missing columns or missing FASTQs instead of
+    //  letting a downstream process crash with an opaque message.
     // ----------------------------------------------------------
+    def required_cols = ['sample_id', 'fastq_1', 'fastq_2']
+    def seen_ids = [] as Set
     ch_samples = Channel
         .fromPath(params.samplesheet, checkIfExists: true)
         .splitCsv(header: true)
         .map { row ->
+            required_cols.each { col ->
+                if (!row[col]?.trim()) {
+                    error "samplesheet row missing or empty column '${col}': ${row}"
+                }
+            }
+            if (!seen_ids.add(row.sample_id)) {
+                error "samplesheet has duplicate sample_id '${row.sample_id}'"
+            }
             def meta = [
                 id:     row.sample_id,
-                tissue: row.tissue ?: 'unspecified'
+                tissue: row.tissue?.trim() ?: 'unspecified'
             ]
             def r1 = file(row.fastq_1, checkIfExists: true)
             def r2 = file(row.fastq_2, checkIfExists: true)

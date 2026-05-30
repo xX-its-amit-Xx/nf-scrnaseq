@@ -12,7 +12,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 # ----------------------------------------------------------
-# Required: install Nextflow
+# Required: install Nextflow + graphviz (DAG renderer)
 # ----------------------------------------------------------
 echo "::group::Install Nextflow"
 if ! command -v nextflow >/dev/null 2>&1; then
@@ -21,6 +21,12 @@ if ! command -v nextflow >/dev/null 2>&1; then
     sudo chmod +x /usr/local/bin/nextflow
 fi
 nextflow -version || { echo "Nextflow install failed" >&2; exit 1; }
+echo "::endgroup::"
+
+echo "::group::Install graphviz (DAG renderer)"
+if ! command -v dot >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends graphviz
+fi
 echo "::endgroup::"
 
 # ----------------------------------------------------------

@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Iterable
 
 # ---------------------------------------------------------------------------
 #  Reference generation
@@ -84,6 +85,41 @@ def random_barcode(rng: random.Random, length: int) -> str:
     return "".join(rng.choices(ALPHABET, k=length))
 
 
+def load_10x_v3_whitelist() -> list[str] | None:
+    """Return a list of valid 10x v3 cell barcodes, or None if unavailable.
+
+    The whitelist ships with ngs_tools (a kb-python dep). Random 16-mers
+    would mostly be rejected by kb's barcode-correction step (the v3
+    whitelist covers ~6.8M of 4^16 possible 16-mers, so the hit rate is
+    ~0.16%). Drawing barcodes from the whitelist makes the synthetic
+    dataset survive kb count and produce a non-degenerate test report.
+    """
+    try:
+        import ngs_tools  # noqa: F401  (we just need its install dir)
+    except ImportError:
+        return None
+    ngs_dir = Path(__import__("ngs_tools").__file__).parent
+    candidates = list(ngs_dir.glob("**/10x_version3_whitelist.txt*"))
+    if not candidates:
+        return None
+    path = candidates[0]
+    opener: type = gzip.open if path.name.endswith(".gz") else open
+    with opener(path, "rt") as fh:
+        return [line.strip() for line in fh if line.strip()]
+
+
+def sample_barcodes(rng: random.Random, n: int) -> list[str]:
+    """Prefer real 10x v3 whitelist barcodes; fall back to random 16-mers."""
+    whitelist = load_10x_v3_whitelist()
+    if whitelist is None:
+        print(
+            "[prepare_test_data] kb_python whitelist not found; using random barcodes",
+            file=sys.stderr,
+        )
+        return [random_barcode(rng, CB_LEN) for _ in range(n)]
+    return rng.sample(whitelist, k=n)
+
+
 def fastq_record(read_id: str, seq: str) -> str:
     qual = "I" * len(seq)  # Phred 40, plenty for kallisto pseudoalignment
     return f"@{read_id}\n{seq}\n+\n{qual}\n"
@@ -100,13 +136,18 @@ def simulate_sample(
 ) -> None:
     out_r1.parent.mkdir(parents=True, exist_ok=True)
     transcript_ids = list(transcripts.keys())
+    barcodes = sample_barcodes(rng, n_cells)
 
     with gzip.open(out_r1, "wt") as r1_fh, gzip.open(out_r2, "wt") as r2_fh:
-        for cell_idx in range(n_cells):
-            barcode = random_barcode(rng, CB_LEN)
-            # Each "cell" expresses a small random subset of transcripts so
+        for cell_idx, barcode in enumerate(barcodes):
+            # Each "cell" expresses a random subset of transcripts so
             # post-clustering UMAP shows real structure on this toy dataset.
-            expressed = rng.sample(transcript_ids, k=rng.randint(2, 5))
+            # Keep the expressed set wider than the test profile's min_genes
+            # so cells survive QC end-to-end.
+            expressed = rng.sample(
+                transcript_ids,
+                k=rng.randint(6, min(10, len(transcript_ids)))
+            )
             for read_idx in range(reads_per_cell):
                 tid = rng.choice(expressed)
                 seq = transcripts[tid]
@@ -160,7 +201,7 @@ def main() -> int:
     p.add_argument("--out-dir", type=Path, default=Path(__file__).parent)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--n-cells", type=int, default=200)
-    p.add_argument("--reads-per-cell", type=int, default=20)
+    p.add_argument("--reads-per-cell", type=int, default=80)
     p.add_argument(
         "--skip-index",
         action="store_true",
