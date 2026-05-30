@@ -11,6 +11,7 @@ test/fastqs/
 data/
 refs/
 pbmc1k.csv
+.local-artifacts/
 
 # Python
 __pycache__/

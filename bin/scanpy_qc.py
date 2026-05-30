@@ -132,12 +132,16 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[scanpy_qc] pre-filter violin failed ({e}); skipping", file=sys.stderr)
 
-    adata = run_scrublet(adata, args.doublet_thresh)
-
-    # Apply filters
+    # Apply gene/cell + mito filters BEFORE scrublet. kb-python's
+    # counts_unfiltered keeps every barcode it ever saw (often ~10^5
+    # empty droplets for a 10x v3 PBMC run), and running scrublet on
+    # that matrix is both biologically meaningless and an OOM risk on
+    # smaller machines.
     sc.pp.filter_cells(adata, min_genes=args.min_genes)
     sc.pp.filter_genes(adata, min_cells=args.min_cells)
     adata = adata[adata.obs["pct_counts_mt"] <= args.max_mito_pct].copy()
+
+    adata = run_scrublet(adata, args.doublet_thresh)
     adata = adata[adata.obs["doublet_score"] <= args.doublet_thresh].copy()
 
     # Post-filter diagnostic plot — same tolerance as the pre-filter one.

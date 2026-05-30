@@ -19,6 +19,7 @@ DATA_DIR="${DATA_DIR:-data/pbmc1k}"
 REF_DIR="${REF_DIR:-refs/human}"
 SAMPLES_CSV="${SAMPLES_CSV:-pbmc1k.csv}"
 IMAGE="${IMAGE:-nf-scrnaseq:0.1.0}"
+PROFILE="${PROFILE:-docker,codespace}"
 
 mkdir -p "$DATA_DIR" "$REF_DIR"
 
@@ -66,7 +67,7 @@ nextflow run . \
     --t2g          "$PWD/$REF_DIR/t2g.txt" \
     --chemistry    10xv3 \
     --outdir       results_pbmc1k \
-    -profile       docker \
+    -profile       "$PROFILE" \
     -resume
 
 # ----------------------------------------------------------

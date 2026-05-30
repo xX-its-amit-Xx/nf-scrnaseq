@@ -73,6 +73,11 @@ nextflow run . \
     -profile       docker
 ```
 
+**On a 16 GB GitHub Codespace:** swap `-profile docker` for
+`-profile docker,codespace` to right-size the per-stage memory caps.
+The pre-built ref from `kb ref -d human` is the practical path (saves
+the 25-minute index build). `scripts/run_pbmc1k.sh` wraps all of this.
+
 **Expected runtime:** ~45 min on a 16-core / 32 GB workstation
 (`ALIGN_COUNT` is the long pole at ~30 min).
 
