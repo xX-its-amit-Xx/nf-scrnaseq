@@ -1,0 +1,30 @@
+# Nextflow runtime
+.nextflow/
+.nextflow.log*
+work/
+results/
+results_*/
+
+# Pipeline outputs / caches
+test/ref/
+test/fastqs/
+data/
+refs/
+pbmc1k.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.claude/
+
+# JVM crash dumps
+hs_err_pid*.log
+hs_err_pid*.mdmp
+replay_pid*.log

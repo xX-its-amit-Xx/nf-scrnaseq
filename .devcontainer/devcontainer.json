@@ -1,0 +1,35 @@
+{
+  "name": "nf-scrnaseq",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "jdkDistro": "tem"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "nextflow.nextflow",
+        "ms-python.python"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "NXF_OPTS": "-Xms256m -Xmx2g"
+  },
+  "waitFor": "postCreateCommand"
+}
