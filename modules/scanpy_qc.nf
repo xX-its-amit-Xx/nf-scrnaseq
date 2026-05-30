@@ -11,6 +11,7 @@ process SCANPY_QC {
     tuple val(meta), path("${meta.id}.qc_plots/*"),  emit: plots, optional: true
 
     script:
+    def mt_arg = params.mt_gene_ids ? "--mt-gene-ids ${params.mt_gene_ids}" : ''
     """
     scanpy_qc.py \\
         --counts ${counts_dir} \\
@@ -20,6 +21,7 @@ process SCANPY_QC {
         --min-cells ${params.min_cells} \\
         --max-mito-pct ${params.max_mito_pct} \\
         --doublet-thresh ${params.doublet_thresh} \\
+        ${mt_arg} \\
         --out-h5ad ${meta.id}.qc.h5ad \\
         --out-json ${meta.id}.qc.json \\
         --out-plotdir ${meta.id}.qc_plots

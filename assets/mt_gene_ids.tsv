@@ -1,0 +1,41 @@
+# Mitochondrial gene Ensembl IDs (chrM/MT) — fallback for references whose
+# t2g.txt ships gene IDs as gene names (e.g. `kb ref -d human`), so the
+# default "MT-"/"mt-" prefix match in scanpy returns 0 hits.
+#
+# Columns: ensembl_gene_id<TAB>gene_symbol<TAB>species
+#
+# Included: 13 protein-coding + 2 rRNAs per species — these carry ~99% of
+# the mitochondrial UMI signal in droplet scRNA-seq. The 22 tRNAs are
+# omitted because their per-cell UMI counts are negligible.
+#
+# Sources: Ensembl GRCh38 / GRCm39 release 110.
+ENSG00000198888	MT-ND1	human
+ENSG00000198763	MT-ND2	human
+ENSG00000198840	MT-ND3	human
+ENSG00000198886	MT-ND4	human
+ENSG00000212907	MT-ND4L	human
+ENSG00000198786	MT-ND5	human
+ENSG00000198695	MT-ND6	human
+ENSG00000198899	MT-ATP6	human
+ENSG00000228253	MT-ATP8	human
+ENSG00000198804	MT-CO1	human
+ENSG00000198712	MT-CO2	human
+ENSG00000198938	MT-CO3	human
+ENSG00000198727	MT-CYB	human
+ENSG00000211459	MT-RNR1	human
+ENSG00000210082	MT-RNR2	human
+ENSMUSG00000064341	mt-Nd1	mouse
+ENSMUSG00000064345	mt-Nd2	mouse
+ENSMUSG00000064360	mt-Nd3	mouse
+ENSMUSG00000064363	mt-Nd4	mouse
+ENSMUSG00000065947	mt-Nd4l	mouse
+ENSMUSG00000064367	mt-Nd5	mouse
+ENSMUSG00000064368	mt-Nd6	mouse
+ENSMUSG00000064357	mt-Atp6	mouse
+ENSMUSG00000064356	mt-Atp8	mouse
+ENSMUSG00000064351	mt-Co1	mouse
+ENSMUSG00000064354	mt-Co2	mouse
+ENSMUSG00000064358	mt-Co3	mouse
+ENSMUSG00000064370	mt-Cytb	mouse
+ENSMUSG00000064337	mt-Rnr1	mouse
+ENSMUSG00000064339	mt-Rnr2	mouse

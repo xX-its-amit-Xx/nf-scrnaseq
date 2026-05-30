@@ -114,6 +114,7 @@ Profiles compose: `-profile test,docker` runs the test data in the container.
 | `--min_genes`     | `200`         | Drop cells with fewer detected genes                       |
 | `--min_cells`     | `3`           | Drop genes detected in fewer than this many cells          |
 | `--max_mito_pct`  | `20.0`        | Drop cells above this mitochondrial UMI percent            |
+| `--mt_gene_ids`   | `assets/mt_gene_ids.tsv` | Fallback Ensembl IDs for refs without MT- gene symbols (e.g. `kb ref -d human`). Set to `null` to disable. |
 | `--doublet_thresh`| `0.25`        | Scrublet score above which a cell is filtered              |
 | `--n_top_genes`   | `2000`        | Highly-variable gene count                                 |
 | `--n_pcs`         | `50`          | PCA components for the neighborhood graph                  |

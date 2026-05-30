@@ -85,6 +85,53 @@ def run_scrublet(adata: ad.AnnData, threshold: float) -> ad.AnnData:
     return adata
 
 
+def load_mt_gene_ids(path: Path | None) -> set[str]:
+    """Read the bundled MT gene-ID fallback file.
+
+    Returns an empty set if no path was given or the file is missing — the
+    caller falls back to symbol-prefix detection in that case.
+    """
+    if not path or not path.exists():
+        return set()
+    ids: set[str] = set()
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        ids.add(line.split("\t", 1)[0])
+    return ids
+
+
+def flag_mt_genes(adata: ad.AnnData, mt_ids: set[str]) -> str:
+    """Annotate adata.var['mt'] and return a short label for the method used.
+
+    Strategy:
+        1. Look for 'MT-' / 'mt-' prefixed symbols in var_names (the standard
+           Ensembl / GENCODE format with gene symbols populated).
+        2. If that finds nothing, intersect var_names with the bundled
+           Ensembl MT gene-ID list — this covers references like
+           `kb ref -d human` that ship gene IDs as both id and name.
+    """
+    prefix_hits = adata.var_names.str.upper().str.startswith("MT-")
+    if int(prefix_hits.sum()) > 0:
+        adata.var["mt"] = prefix_hits
+        return f"symbol prefix MT-/mt- ({int(prefix_hits.sum())} genes)"
+
+    if mt_ids:
+        # kb-python ships Ensembl IDs with version suffixes
+        # (ENSG00000198888.2). Strip them before intersecting.
+        import numpy as np
+        stripped = np.array(
+            [str(v).split(".", 1)[0] for v in adata.var_names]
+        )
+        id_hits = np.isin(stripped, list(mt_ids))
+        adata.var["mt"] = id_hits
+        return f"Ensembl ID fallback ({int(id_hits.sum())} genes)"
+
+    adata.var["mt"] = False
+    return "no MT genes detected — % mito will be 0"
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--counts", required=True, type=Path)
@@ -94,6 +141,13 @@ def main() -> int:
     p.add_argument("--min-cells", type=int, default=3)
     p.add_argument("--max-mito-pct", type=float, default=20.0)
     p.add_argument("--doublet-thresh", type=float, default=0.25)
+    p.add_argument(
+        "--mt-gene-ids",
+        type=Path,
+        default=None,
+        help="TSV of mitochondrial gene Ensembl IDs (col 0). Used when "
+             "var_names ship as gene IDs rather than MT- symbols.",
+    )
     p.add_argument("--out-h5ad", required=True, type=Path)
     p.add_argument("--out-json", required=True, type=Path)
     p.add_argument("--out-plotdir", required=True, type=Path)
@@ -111,8 +165,11 @@ def main() -> int:
     n_cells_pre = adata.n_obs
     n_genes_pre = adata.n_vars
 
-    # Mitochondrial gene flag — works for human (MT-) and mouse (mt-) symbols
-    adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
+    # Mitochondrial gene flag — symbol prefix first, then Ensembl ID fallback
+    # for refs (like kb-python's pre-built ones) that ship IDs as gene names.
+    mt_ids = load_mt_gene_ids(args.mt_gene_ids)
+    mt_method = flag_mt_genes(adata, mt_ids)
+    print(f"[scanpy_qc] MT detection: {mt_method}", file=sys.stderr)
     sc.pp.calculate_qc_metrics(
         adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
     )
@@ -177,6 +234,7 @@ def main() -> int:
         "n_predicted_doublets": int(adata.obs.get("predicted_doublet", []).sum())
         if adata.n_obs
         else 0,
+        "mt_detection": mt_method,
         "filters": {
             "min_genes": args.min_genes,
             "min_cells": args.min_cells,
